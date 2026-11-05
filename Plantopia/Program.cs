@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Plantopia.Data;
 using Microsoft.AspNetCore.Authentication.Cookies; // ← add this at the top
 
@@ -25,12 +25,29 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         builder.Configuration.GetConnectionString("DefaultConnection")));
 
 var app = builder.Build();
+
+// Create/update the database tables on startup (this also seeds the plant catalog)
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "Database migration failed");
+    }
+}
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/home/error");
     app.UseHsts();
 }
-app.UseHttpsRedirection();
+// set DisableHttpsRedirect=true on hosts without an SSL certificate
+if (!app.Configuration.GetValue<bool>("DisableHttpsRedirect"))
+{
+    app.UseHttpsRedirection();
+}
 app.UseStaticFiles();
 app.UseRouting();
 app.UseSession();
